@@ -1,4 +1,5 @@
 import type { TOOL_CONTRACTS } from "./toolContracts.js";
+import { RECONSTRUCTION_RECIPE_PROMPTS } from "./reconstructionRecipePrompts.js";
 
 type ToolName = (typeof TOOL_CONTRACTS)[number]["name"];
 
@@ -21,6 +22,7 @@ export interface PromptArgumentContract {
 }
 
 interface PromptWorkflowStep {
+  readonly phase?: string;
   readonly tools: readonly ToolName[];
   readonly instruction: string;
 }
@@ -69,7 +71,7 @@ export const renderGuidedPrompt = (
   const workflow = contract.steps
     .map(
       (step) =>
-        `- ${step.instruction}\n  Tools: ${step.tools.map((tool) => `\`${tool}\``).join(", ")}`,
+        `- ${step.phase === undefined ? "" : `**${step.phase}:** `}${step.instruction}${step.tools.length === 0 ? "" : `\n  Tools: ${step.tools.map((tool) => `\`${tool}\``).join(", ")}`}`,
     )
     .join("\n");
   const discipline = COMMON_DISCIPLINE.map(
@@ -92,6 +94,7 @@ ${discipline}`;
 
 /** Complete guided workflow inventory advertised through MCP prompts. */
 export const PROMPT_CONTRACTS = [
+  ...RECONSTRUCTION_RECIPE_PROMPTS,
   {
     name: "investigate_feature",
     title: "Investigate a feature",

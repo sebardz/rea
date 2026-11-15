@@ -1,6 +1,6 @@
 # Guided MCP prompts and completion
 
-REA exposes six provider-neutral investigation workflows through the MCP
+REA exposes eight provider-neutral investigation workflows through the MCP
 `prompts` capability. They complement the generated tool catalog; they do not add, remove, or
 invoke tools by themselves.
 
@@ -8,6 +8,8 @@ invoke tools by themselves.
 
 | Prompt                            | Purpose                                                                              |
 | --------------------------------- | ------------------------------------------------------------------------------------ |
+| `reconstruct_web_feature`         | Investigate, brief, build, compare, refine and verify one finite web interaction.    |
+| `reconstruct_cli_feature`         | Investigate, brief, build, compare, refine and verify one finite CLI feature.        |
 | `investigate_feature`             | Trace a feature from discovery into relevant function evidence.                      |
 | `compare_application_versions`    | Compare two shipped artifacts, with optional static and runtime follow-up.           |
 | `verify_reconstruction`           | Evaluate a finite reconstruction specification against retained comparison Evidence. |
@@ -24,6 +26,10 @@ rendered as untrusted selection data, not instructions or authorization.
 Tool results include their Evidence inline. Prompts do not require a bundle or
 resource fetch to read a result; an Evidence ID is only a reference when a
 prompt argument or tool explicitly accepts one.
+
+The two reconstruction recipes include the ordinary coding work between REA
+observations and finite verification. See the [complete recipes and examples](investigation-reconstruction-recipes.md).
+Retrieving either prompt performs no analysis, target execution or project write.
 
 For a JavaScript/Electron application directory, `investigate_feature` points
 directly to `analyze_javascript_application` with `input_path`; it does not

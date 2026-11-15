@@ -2,7 +2,7 @@
 name: reverse-engineer-anything
 description: Reverse engineer native, managed, Electron/JavaScript, packaged, firmware, and browser targets with REA. Use shipped-artifact or requested runtime evidence to explain features, compare versions, decompile code, or guide a reconstruction. Skip REA for ordinary source-repository architecture analysis.
 metadata:
-  version: "41"
+  version: "42"
 ---
 
 # REA
@@ -219,6 +219,14 @@ observed client-policy rejection.
 
 ## Plan broader investigations
 
+For a request to investigate and independently reconstruct one web or CLI
+feature, use the [complete reconstruction recipes](references/reconstruction-recipes.md).
+They connect original Evidence, a cited brief, ordinary coding, comparative
+failure, refinement and finite verification. Native MCP prompts
+`reconstruct_web_feature` and `reconstruct_cli_feature` offer the same optional
+starting points when advertised by the connected server; retrieving one does
+not execute a target or authorize additional effects.
+
 For requests that span multiple features or subsystems, use a staged workflow:
 
 1. Turn the request into a checklist of questions and the evidence each answer
@@ -264,6 +272,8 @@ as complete while required questions remain open.
   [references/runtime-observation.md](references/runtime-observation.md)
 - Evidence paging, comparisons, residual unknowns, and verification:
   [references/evidence-workflows.md](references/evidence-workflows.md)
+- Complete web and CLI investigation/reconstruction recipes:
+  [references/reconstruction-recipes.md](references/reconstruction-recipes.md)
 
 ## Finish the task
 

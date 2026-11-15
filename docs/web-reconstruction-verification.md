@@ -4,6 +4,9 @@ Compare the original and reconstruction through explicit browser actions, then
 verify finite claims against their Evidence. Pixel agreement and agreement on
 observed behavior are separate claims; neither establishes global equivalence.
 
+For the preceding investigation, brief, independent implementation and correction,
+follow the [complete web reconstruction recipe](web-reconstruction-recipe.md).
+
 ## Complete runnable example
 
 Build with the pinned project toolchain, then supply an existing Chromium-compatible

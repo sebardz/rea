@@ -20,6 +20,10 @@ export default defineConfig({
           { text: "Client configuration", link: "/client-configuration" },
           { text: "CLI and Evidence", link: "/cli" },
           { text: "Agent prompts", link: "/mcp-prompts" },
+          {
+            text: "Investigation recipes",
+            link: "/investigation-reconstruction-recipes",
+          },
           { text: "Roadmap", link: "/roadmap" },
         ],
       },

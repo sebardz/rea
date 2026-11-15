@@ -4,6 +4,9 @@ Use the CLI for a direct inspection or a script. It uses the same application
 workflows and evidence contracts as REA's MCP server. Each CLI invocation is a
 separate process; save results when you want to use them in a later command.
 
+For a complete investigation, evidence-backed brief, independent implementation
+and correction cycle, see the [web and CLI recipes](investigation-reconstruction-recipes.md).
+
 ## Run a command
 
 After [installing REA](installation.md), use `rea`. You can also run a command
