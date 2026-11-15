@@ -1,4 +1,5 @@
 import type { PacketCaptureService } from "../application/captures/PacketCaptureService.js";
+import { createEvidenceBundle } from "../domain/evidenceBundle.js";
 import { createPacketCaptureService } from "../composition/captures.js";
 import { registerCaptureTools } from "./registerCaptureTools.js";
 import type { SignalRecordingService } from "../application/signals/SignalRecordingService.js";
@@ -724,6 +725,7 @@ const registerBinaryAnalysisTools = ({
 
 const registerObservationTools = ({
   evidenceById,
+  session,
   server,
   options,
   logger,
@@ -736,6 +738,14 @@ const registerObservationTools = ({
   registerWebScriptTool(server, { ...common, artifactResources });
   registerBrowserTools(server, {
     ...common,
+    comparisonContext: {
+      lookup: evidenceById,
+      retain:
+        session === undefined
+          ? undefined
+          : (records) =>
+              session.importEvidenceBundle(createEvidenceBundle(records)),
+    },
     browser: options.browserObservation,
     loadFailure: options.optionalProviderLoadFailures?.browserObservation,
   });

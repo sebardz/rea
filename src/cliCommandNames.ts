@@ -1,5 +1,6 @@
 /** Canonical names used by every one-shot CLI command registration. */
 export const CLI_COMMANDS = Object.freeze({
+  verifyReconstruction: "verify-reconstruction",
   inspectPacketCapture: "inspect-packet-capture",
   decodeSignalRecording: "decode-signal-recording",
   inspectWasmArtifact: "inspect-wasm-artifact",
@@ -209,7 +210,6 @@ export const MCP_TOOLS_WITHOUT_DEDICATED_CLI = Object.freeze([
   "find_changed_behavior",
   "build_call_path",
   "correlate_static_and_runtime",
-  "verify_reconstruction",
   "list_unknowns",
   "record_unknown",
   "update_unknown",

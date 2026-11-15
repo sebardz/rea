@@ -31,8 +31,10 @@ import { logToolExecution } from "./toolLogging.js";
 import { toolRegistrationOptions } from "./toolRegistrationOptions.js";
 import type { WithAdmittedAnalysis } from "./analysisAdmission.js";
 import { runAdmittedToolOperation } from "./admittedToolOperation.js";
+import type { WebComparisonContext } from "../application/WebComparisonEvidence.js";
 
 interface BrowserToolRegistration {
+  readonly comparisonContext?: WebComparisonContext;
   readonly logger: Logger;
   readonly loadFailure?: OptionalProviderLoadFailure | undefined;
   readonly browser: BrowserObservationPort | undefined;
@@ -140,7 +142,8 @@ export const registerBrowserTools = (
         registration,
         captureDiffContract,
         { input, context },
-        (parsed) => compareWebCaptureEvidence(options.browser, parsed),
+        (parsed) =>
+          compareWebCaptureEvidence(parsed, options.comparisonContext),
       ),
   );
   server.registerTool(
@@ -166,7 +169,8 @@ export const registerBrowserTools = (
         registration,
         screenshotDiffContract,
         { input, context },
-        (parsed) => compareWebScreenshotEvidence(options.browser, parsed),
+        (parsed) =>
+          compareWebScreenshotEvidence(parsed, options.comparisonContext),
       ),
   );
 };
@@ -184,7 +188,11 @@ const runBrowserTool = async <Input>(
   ) => Promise<Result<Evidence, AnalysisError>>,
 ) => {
   const { input, context } = request;
-  if (options.loadFailure !== undefined)
+  if (
+    options.loadFailure !== undefined &&
+    contract.name !== "compare_web_captures" &&
+    contract.name !== "compare_web_screenshots"
+  )
     return options.delivery.toCallToolResult(
       err(optionalProviderUnavailable(options.loadFailure, contract.name)),
       contract,

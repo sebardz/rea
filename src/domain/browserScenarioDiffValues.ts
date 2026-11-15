@@ -1,6 +1,23 @@
 import { z } from "zod";
 
 import { browserScenarioCaptureSchema } from "./browserScenarioCapture.js";
+import { browserOriginSchema } from "./browserObservation.js";
+
+/** Explicit correspondence between the original and reconstructed HTTP origins. */
+const canonicalOriginSchema = z
+  .string()
+  .min(1)
+  .refine((value) => {
+    const parsed = browserOriginSchema.safeParse(value);
+    return parsed.success && parsed.data === value;
+  }, "Use an exact canonical HTTP(S) origin without path, query or credentials.");
+export const browserScenarioOriginMappingSchema = z.strictObject({
+  before_origin: canonicalOriginSchema,
+  after_origin: canonicalOriginSchema,
+});
+export type BrowserScenarioOriginMapping = z.infer<
+  typeof browserScenarioOriginMappingSchema
+>;
 
 /** Scenario artifact families compared after step alignment. */
 export const browserScenarioArtifactKindSchema = z.enum([
@@ -73,17 +90,33 @@ const normalizationInputSchema = z
   });
 
 /** Input for step-aligned comparison of two browser scenario captures. */
-export const compareBrowserScenariosInputSchema = z.strictObject({
-  before_scenario: browserScenarioCaptureSchema.describe(
-    "Earlier complete normalized_result from capture_browser_scenario.",
-  ),
-  after_scenario: browserScenarioCaptureSchema.describe(
-    "Later complete normalized_result from capture_browser_scenario.",
-  ),
-  normalization: normalizationInputSchema
-    .default({ rules: [] })
-    .describe("Exact-literal rules committed in the comparison result."),
-});
+export const compareBrowserScenariosInputSchema = z
+  .strictObject({
+    before_scenario: browserScenarioCaptureSchema.describe(
+      "Earlier complete normalized_result from capture_browser_scenario.",
+    ),
+    after_scenario: browserScenarioCaptureSchema.describe(
+      "Later complete normalized_result from capture_browser_scenario.",
+    ),
+    normalization: normalizationInputSchema
+      .default({ rules: [] })
+      .describe("Exact-literal rules committed in the comparison result."),
+    origin_mapping: browserScenarioOriginMappingSchema.optional(),
+  })
+  .superRefine((input, context) => {
+    const mapping = input.origin_mapping;
+    if (mapping === undefined) return;
+    for (const side of ["before", "after"] as const) {
+      const origin = input[`${side}_scenario`].scenario.start_origin;
+      if (mapping[`${side}_origin`] !== origin)
+        context.addIssue({
+          code: "custom",
+          path: ["origin_mapping", `${side}_origin`],
+          message:
+            "Origin mapping must identify the corresponding scenario start_origin",
+        });
+    }
+  });
 /** Parsed browser scenario comparison input. */
 export type CompareBrowserScenariosInput = z.infer<
   typeof compareBrowserScenariosInputSchema
@@ -138,6 +171,7 @@ export const browserScenarioDiffSchema = z.strictObject({
   normalization: z.strictObject({
     built_in_rules: z.array(builtInNormalizationSchema).length(5),
     rules: z.array(normalizationRuleSchema),
+    origin_mapping: browserScenarioOriginMappingSchema.optional(),
     sha256: z.string().regex(/^[a-f0-9]{64}$/u),
   }),
   alignment: z.strictObject({

@@ -243,9 +243,11 @@ export const PROMPT_CONTRACTS = [
           "compare_artifacts",
           "compare_functions",
           "compare_process_captures",
+          "compare_web_captures",
+          "compare_web_screenshots",
         ],
         instruction:
-          "Produce missing comparison Evidence when needed; incomplete comparison dimensions remain unknown.",
+          "Produce missing comparison Evidence when needed; incomplete comparison dimensions remain unknown. For web claims, compare authenticated source Evidence or exact retained references; record an explicit origin_mapping for original and reconstruction at different origins. Use scenario claims for declared interactions and separate screenshot claims with an explicit maximum_changed_ratio for pixels. Visual agreement never establishes behavior.",
       },
       {
         tools: ["verify_reconstruction"],

@@ -281,7 +281,6 @@ const compareCaptures = async (
   after: WebPageInspection,
 ) => {
   const result = await compareWebCaptureEvidence(
-    new CdpBrowserProvider(),
     browserCaptureComparisonInputSchema.parse({
       before: { inspection: before },
       after: { inspection: after },

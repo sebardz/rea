@@ -8,21 +8,19 @@ import {
   compareWebScreenshotEvidence,
   discoverWebMcpTools,
 } from "../application/BrowserObservationService.js";
-import { CdpBrowserProvider } from "../browser/CdpBrowserProvider.js";
 import { logCliCommand } from "../cliLogging.js";
 import {
   AnalysisInputError,
   type AnalysisInputIssue,
 } from "../domain/analysisErrorCore.js";
-import { compareBrowserScenariosInputSchema } from "../domain/browserScenarioDiffValues.js";
 import { browserScenarioCaptureSchema } from "../domain/browserScenarioCapture.js";
-import { compareWebCapturesInputSchema } from "../domain/webCaptureDiffSchemas.js";
+import {
+  webCaptureComparisonRequestSchema,
+  webScreenshotComparisonRequestSchema,
+} from "../contracts/webComparisonInputContracts.js";
 import { projectInputIssues } from "../domain/inputIssueProjection.js";
 import { discoverWebMcpToolsInputSchema } from "../domain/webMcpDiscovery.js";
-import {
-  captureWebScreenshotInputSchema,
-  compareWebScreenshotsInputSchema,
-} from "../domain/webScreenshot.js";
+import { captureWebScreenshotInputSchema } from "../domain/webScreenshot.js";
 import type { JsonValue } from "../domain/jsonValue.js";
 import { parseCliJsonInput } from "../cliJsonInput.js";
 import type { Logger } from "pino";
@@ -95,6 +93,12 @@ const registerCaptureDiff = (
         .describe("Later normalized web capture JSON or JSON file path"),
     }),
     options: z.object({
+      originMappingJson: z
+        .string()
+        .optional()
+        .describe(
+          "Explicit before_origin/after_origin mapping JSON or file for browser scenarios",
+        ),
       normalizationJson: z
         .string()
         .default('{"rules":[]}')
@@ -108,9 +112,12 @@ const registerCaptureDiff = (
           before: args.beforeJson,
           after: args.afterJson,
           normalization: options.normalizationJson,
+          ...(options.originMappingJson === undefined
+            ? {}
+            : { origin_mapping: options.originMappingJson }),
         });
         if (!inputs.ok) return inputs.error;
-        const { before, after, normalization } = inputs.value;
+        const { before, after, normalization, origin_mapping } = inputs.value;
         // Passive snapshots own the inspection wrapper. Otherwise recognize
         // scenario-owned fields even when the scenario manifest is missing.
         const scenarioInput = [before, after].some(
@@ -122,21 +129,25 @@ const registerCaptureDiff = (
               (field) => field in capture,
             ),
         );
-        const input = scenarioInput
-          ? { before_scenario: before, after_scenario: after, normalization }
-          : { before, after };
-        const parsed = scenarioInput
-          ? compareBrowserScenariosInputSchema.safeParse(input)
-          : compareWebCapturesInputSchema.safeParse(input);
+        const mapping = origin_mapping === undefined ? {} : { origin_mapping };
+        const input =
+          isEvidenceSelection(before) || isEvidenceSelection(after)
+            ? { left: before, right: after, normalization, ...mapping }
+            : scenarioInput
+              ? {
+                  before_scenario: before,
+                  after_scenario: after,
+                  normalization,
+                  ...mapping,
+                }
+              : { before, after, ...mapping };
+        const parsed = webCaptureComparisonRequestSchema.safeParse(input);
         if (!parsed.success)
           return inputError(
             "compare_web_captures",
             projectInputIssues(parsed.error.issues, input),
           );
-        const result = await compareWebCaptureEvidence(
-          new CdpBrowserProvider(),
-          parsed.data,
-        );
+        const result = await compareWebCaptureEvidence(parsed.data);
         return result.ok ? result.value : browserCliError(result.error);
       }),
   });
@@ -194,6 +205,18 @@ const registerScreenshotDiff = (
         .describe("Later screenshot artifact JSON or JSON file path"),
     }),
     options: z.object({
+      stepId: z
+        .string()
+        .optional()
+        .describe(
+          "Exact shared screenshot step_id for scenario Evidence inputs",
+        ),
+      originMappingJson: z
+        .string()
+        .optional()
+        .describe(
+          "Explicit before_origin/after_origin mapping JSON or file for scenario Evidence",
+        ),
       channelThreshold: z
         .number()
         .int()
@@ -208,15 +231,21 @@ const registerScreenshotDiff = (
         const inputs = await parseJsonArguments(operation, {
           before: args.beforeJson,
           after: args.afterJson,
+          ...(options.originMappingJson === undefined
+            ? {}
+            : { origin_mapping: options.originMappingJson }),
         });
         if (!inputs.ok) return inputs.error;
-        const { before, after } = inputs.value;
+        const { before, after, origin_mapping } = inputs.value;
         const input = {
-          before,
-          after,
+          ...(isEvidenceSelection(before) || isEvidenceSelection(after)
+            ? { left: before, right: after }
+            : { before, after }),
           channel_threshold: options.channelThreshold,
+          ...(options.stepId === undefined ? {} : { step_id: options.stepId }),
+          ...(origin_mapping === undefined ? {} : { origin_mapping }),
         };
-        const parsed = compareWebScreenshotsInputSchema.safeParse(input);
+        const parsed = webScreenshotComparisonRequestSchema.safeParse(input);
         if (!parsed.success)
           return browserCliError(
             new AnalysisInputError(
@@ -225,14 +254,16 @@ const registerScreenshotDiff = (
               projectInputIssues(parsed.error.issues, input),
             ),
           );
-        const result = await compareWebScreenshotEvidence(
-          new CdpBrowserProvider(),
-          parsed.data,
-        );
+        const result = await compareWebScreenshotEvidence(parsed.data);
         return result.ok ? result.value : browserCliError(result.error);
       }),
   });
 };
+
+const isEvidenceSelection = (value: unknown): boolean =>
+  typeof value === "object" &&
+  value !== null &&
+  ("evidence_id" in value || "kind" in value);
 
 /**
  * Parse each named inline JSON argument or local JSON file, like other

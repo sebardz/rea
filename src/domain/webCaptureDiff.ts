@@ -9,6 +9,10 @@ import {
   type WebCaptureDimension,
 } from "./webCaptureDiffSchemas.js";
 import type { WebMcpDiscovery } from "./webMcpDiscovery.js";
+import {
+  incompleteBrowserSections,
+  type BrowserSection,
+} from "./browserCompleteness.js";
 
 type Dimension = WebCaptureDimension;
 type Change = WebCaptureChange;
@@ -539,28 +543,15 @@ const webMcpMap = (
 const webMcpComplete = (discovery: WebMcpDiscovery | null): boolean =>
   discovery !== null &&
   discovery.status === "available" &&
-  !incompleteSections(discovery.completeness).has("webmcp_tools");
+  !incompleteBrowserSections(discovery.completeness).has("webmcp_tools");
 
 const sectionsComplete = (
   inspection: WebPageInspection,
-  sections: readonly string[],
+  sections: readonly BrowserSection[],
 ): boolean => {
-  const incomplete = incompleteSections(inspection.completeness);
+  const incomplete = incompleteBrowserSections(inspection.completeness);
   return sections.every((section) => !incomplete.has(section));
 };
-
-const incompleteSections = (completeness: {
-  readonly policy_filtered_sections: readonly string[];
-  readonly attach_limited_sections: readonly string[];
-  readonly truncated_sections: readonly string[];
-  readonly unavailable_sections: readonly string[];
-}): ReadonlySet<string> =>
-  new Set([
-    ...completeness.policy_filtered_sections,
-    ...completeness.attach_limited_sections,
-    ...completeness.truncated_sections,
-    ...completeness.unavailable_sections,
-  ]);
 
 const domProjection = (inspection: WebPageInspection) => ({
   frames: inspection.frames

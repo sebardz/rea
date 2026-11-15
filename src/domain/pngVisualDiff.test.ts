@@ -2,16 +2,16 @@ import { crc32, deflateSync } from "node:zlib";
 
 import { describe, expect, it } from "vitest";
 
-import { comparePngScreenshots } from "./PngVisualDiff.js";
+import { comparePngScreenshots } from "./pngVisualDiff.js";
 import {
   AnalysisResourceConstraintError,
   AnalysisUnsupportedTargetError,
-} from "../domain/analysisErrorCore.js";
+} from "./analysisErrorCore.js";
 import {
   compareWebScreenshotsInputSchema,
   createWebScreenshotArtifact,
   webScreenshotDiffSchema,
-} from "../domain/webScreenshot.js";
+} from "./webScreenshot.js";
 
 describe("PNG visual diff", () => {
   it("reports exact changed-pixel and channel metrics", () => {

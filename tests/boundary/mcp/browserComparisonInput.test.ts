@@ -69,7 +69,7 @@ describe("browser comparison input boundary", () => {
       toolRegistrationOptions(contract),
       async (input) => {
         calls += 1;
-        const compared = await compareWebCaptureEvidence(provider, input);
+        const compared = await compareWebCaptureEvidence(input);
         return compared.ok
           ? delivery.toEvidenceToolResult(compared.value, contract, undefined)
           : delivery.toErrorToolResult(
@@ -110,7 +110,6 @@ describe("browser comparison input boundary", () => {
         },
         { before_scenario: {}, after_scenario: {} },
         { before_scenario: scenario.before_scenario },
-        { ...passive, normalization: { rules: [] } },
         {
           before_scenario: scenario.before_scenario,
           normalization: { rules: [] },
@@ -134,7 +133,10 @@ describe("browser comparison input boundary", () => {
         },
       ];
       // The projection leaves group exclusion to the canonical runtime parser.
-      const mixedGroups = [{ ...passive, ...scenario }];
+      const mixedGroups = [
+        { ...passive, ...scenario },
+        { ...passive, normalization: { rules: [] } },
+      ];
       for (const { input, advertisedValid, runtimeValid } of [
         ...[passive, scenario, withoutNormalization].map((input) => ({
           input,

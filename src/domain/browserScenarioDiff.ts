@@ -25,6 +25,7 @@ import {
   commitBrowserScenarioNormalization,
   digestNormalizedScenarioValue,
 } from "./browserScenarioNormalization.js";
+import { mapBrowserScenarioOrigin } from "./browserScenarioOriginMapping.js";
 
 type ComparableArtifact = {
   readonly artifact: BrowserScenarioArtifactKind;
@@ -58,14 +59,18 @@ interface AlignedStepComparison {
 export const compareBrowserScenarios = (
   input: CompareBrowserScenariosInput,
 ): BrowserScenarioDiff => {
-  const normalization = commitBrowserScenarioNormalization(input.normalization);
-  const alignment = alignScenarioSteps(
-    input.before_scenario,
-    input.after_scenario,
+  const normalization = commitBrowserScenarioNormalization(
+    input.normalization,
+    input.origin_mapping,
   );
+  const afterCapture =
+    input.origin_mapping === undefined
+      ? input.after_scenario
+      : mapBrowserScenarioOrigin(input.after_scenario, input.origin_mapping);
+  const alignment = alignScenarioSteps(input.before_scenario, afterCapture);
   const compared = compareAlignedSteps({
     beforeCapture: input.before_scenario,
-    afterCapture: input.after_scenario,
+    afterCapture,
     alignment,
     rules: normalization.rules,
   });
@@ -107,6 +112,11 @@ export const compareBrowserScenarios = (
       "Only declared literal normalization rules are applied, in canonical rule_id order, to already-redacted durable capture fields.",
       "Elapsed time and event sequence/index values are excluded as volatile; screenshot bytes are compared by content digest.",
       "A changed status proves an observed normalized difference. Missing or truncated evidence, incompatible capture context, or alignment failure prevents an unchanged claim.",
+      ...(input.origin_mapping === undefined
+        ? []
+        : [
+            "The declared origin correspondence applies only to typed URL fields; source captures, text, storage, headers and bodies remain unchanged. Noncanonical URL spellings remain literal.",
+          ]),
     ],
   });
 };

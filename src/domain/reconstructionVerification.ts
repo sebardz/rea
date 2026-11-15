@@ -9,7 +9,7 @@ import { uniqueSorted } from "./canonicalOrdering.js";
 import { compareUnicodeCodePoints } from "./unicodeCodePointOrder.js";
 import { comparisonSourceEvidenceSides } from "./comparisonSourceEvidence.js";
 import { parseEvidence, type Evidence } from "./evidence.js";
-import { parseEvidenceBundle } from "./evidenceBundle.js";
+import { parseImmutableEvidenceBundle } from "./evidenceBundle.js";
 import { functionComparisonResultSchema } from "./functionComparisonSchemas.js";
 import {
   PROCESS_PROVIDER,
@@ -38,6 +38,12 @@ import {
   reconstructionUnknownHeads,
 } from "./reconstructionUnknowns.js";
 import type { ResidualUnknown } from "./residualUnknown.js";
+import { WEB_COMPARISON_PROVIDER } from "./webComparisonSources.js";
+import {
+  createWebReconstructionEvaluator,
+  isWebReconstructionClaim,
+  type WebReconstructionEvaluator,
+} from "./reconstructionWebVerification.js";
 
 const providers = {
   behavioral: {
@@ -56,6 +62,21 @@ const providers = {
     predicates: ["rea.artifact-comparison"],
     id: "rea-artifact-comparison",
     name: "REA artifact comparison",
+  },
+  "web-scenario": {
+    operation: "compare_web_captures",
+    predicates: ["rea.web-capture-diff"],
+    ...WEB_COMPARISON_PROVIDER,
+  },
+  "web-capture": {
+    operation: "compare_web_captures",
+    predicates: ["rea.web-capture-diff"],
+    ...WEB_COMPARISON_PROVIDER,
+  },
+  "web-screenshot": {
+    operation: "compare_web_screenshots",
+    predicates: ["rea.web-screenshot-diff"],
+    ...WEB_COMPARISON_PROVIDER,
   },
 } as const;
 
@@ -76,13 +97,14 @@ export const verifyReconstruction = (
 ): ReconstructionVerificationResult => {
   const specification =
     reconstructionSpecificationSchema.parse(specificationInput);
-  const bundle = parseEvidenceBundle(bundleInput);
+  const bundle = parseImmutableEvidenceBundle(bundleInput);
   const records = new Map(
     bundle.records.map((item) => [item.evidence_id, item]),
   );
   const heads = reconstructionUnknownHeads(bundle.unknowns);
+  const evaluateWebClaim = createWebReconstructionEvaluator(records);
   const results = specification.claims
-    .map((claim) => evaluateClaim(claim, records, heads))
+    .map((claim) => evaluateClaim(claim, records, heads, evaluateWebClaim))
     .sort((left, right) =>
       compareUnicodeCodePoints(left.claim_id, right.claim_id),
     );
@@ -105,8 +127,12 @@ export const verifyReconstruction = (
       passed: count(results, "pass"),
       failed,
       unknown: unresolved,
-      behavioral: results.filter(({ kind }) => kind === "behavioral").length,
-      structural: results.filter(({ kind }) => kind !== "behavioral").length,
+      behavioral: results.filter(
+        ({ kind }) => kind === "behavioral" || kind === "web-scenario",
+      ).length,
+      structural: results.filter(
+        ({ kind }) => kind !== "behavioral" && kind !== "web-scenario",
+      ).length,
     },
     claims: {
       items: results,
@@ -124,6 +150,7 @@ const evaluateClaim = (
   claim: Claim,
   records: ReadonlyMap<string, Evidence>,
   heads: ReadonlyMap<string, ResidualUnknown>,
+  evaluateWebClaim: WebReconstructionEvaluator,
 ): ClaimResult => {
   const comparison = records.get(claim.comparison_evidence_id);
   if (comparison === undefined)
@@ -143,12 +170,23 @@ const evaluateClaim = (
       throw new TypeError(`Missing source Evidence ${id}`);
     return source;
   });
-  const functionSourceFacts = readValidatedSourceFacts(claim, sources);
-  const observed = observedStatus(claim, comparison);
-  const limitations = [
-    ...authorityLimitations(claim, sources, sides),
-    ...sourceCallCoverageLimitations(claim, functionSourceFacts, observed),
-  ];
+  const web = isWebReconstructionClaim(claim)
+    ? evaluateWebClaim(claim, comparison, sides)
+    : undefined;
+  const functionSourceFacts =
+    web === undefined ? readValidatedSourceFacts(claim, sources) : [];
+  const observed = web?.observed ?? observedStatus(claim, comparison);
+  const limitations =
+    web === undefined
+      ? [
+          ...authorityLimitations(claim, sources, sides),
+          ...sourceCallCoverageLimitations(
+            claim,
+            functionSourceFacts,
+            observed,
+          ),
+        ]
+      : [...web.limitations];
   const relatedUnknowns = reconstructionClaimUnknowns(
     heads,
     comparison.evidence_id,
@@ -156,12 +194,26 @@ const evaluateClaim = (
     claim.dimension,
   );
   const relevantUnknowns = relatedUnknowns;
-  const status = classify(observed, limitations, relevantUnknowns);
+  const status =
+    web?.accepted_visual_difference === true &&
+    limitations.length === 0 &&
+    relevantUnknowns.length === 0
+      ? "pass"
+      : classify(observed, limitations, relevantUnknowns);
   const displayedUnknowns = relevantUnknowns;
   return reconstructionClaimResultSchema.parse({
     claim_id: claim.claim_id,
     kind: claim.kind,
     dimension: claim.dimension,
+    ...("step_id" in claim && claim.step_id !== undefined
+      ? { step_id: claim.step_id }
+      : {}),
+    ...(claim.kind === "web-screenshot"
+      ? { maximum_changed_ratio: claim.maximum_changed_ratio }
+      : {}),
+    ...(web?.measured_changed_ratio === undefined
+      ? {}
+      : { measured_changed_ratio: web.measured_changed_ratio }),
     status,
     observed_status: observed,
     comparison_evidence_id: comparison.evidence_id,
@@ -172,6 +224,11 @@ const evaluateClaim = (
     limitations: uniqueSorted([
       ...comparison.limitations,
       ...limitations,
+      ...(claim.kind === "web-screenshot"
+        ? [
+            "Visual acceptance covers only the selected captured pixels; it does not establish functional equivalence.",
+          ]
+        : []),
       ...displayedUnknowns.map(
         ({ question }) => `Residual unknown: ${question}`,
       ),

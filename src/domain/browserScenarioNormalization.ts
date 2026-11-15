@@ -5,6 +5,7 @@ import type {
   BrowserScenarioDiff,
   BrowserScenarioNormalization,
   BrowserScenarioNormalizationRule,
+  BrowserScenarioOriginMapping,
 } from "./browserScenarioDiffValues.js";
 
 const BUILT_IN_RULES = [
@@ -18,6 +19,7 @@ const BUILT_IN_RULES = [
 /** Canonically order and commit a parsed browser scenario normalization policy. */
 export const commitBrowserScenarioNormalization = (
   input: BrowserScenarioNormalization,
+  originMapping?: BrowserScenarioOriginMapping,
 ): BrowserScenarioDiff["normalization"] => {
   const rules = [...input.rules]
     .map((rule) => ({
@@ -27,7 +29,11 @@ export const commitBrowserScenarioNormalization = (
     .sort((left, right) =>
       left.rule_id < right.rule_id ? -1 : left.rule_id > right.rule_id ? 1 : 0,
     );
-  const commitment = { built_in_rules: [...BUILT_IN_RULES], rules };
+  const commitment = {
+    built_in_rules: [...BUILT_IN_RULES],
+    rules,
+    ...(originMapping === undefined ? {} : { origin_mapping: originMapping }),
+  };
   return {
     ...commitment,
     sha256: digestCanonicalValue(commitment, "Browser scenario"),

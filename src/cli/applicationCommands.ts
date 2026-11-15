@@ -1,4 +1,8 @@
 import { reconstructionCoverageEvaluationInputSchema } from "../domain/reconstructionCoverageInput.js";
+import {
+  reconstructionVerificationRequestSchema,
+  verifyReconstructionRequest,
+} from "../application/ReconstructionVerificationService.js";
 import { Cli, z } from "incur";
 
 import { CLI_COMMANDS } from "../cliCommandNames.js";
@@ -26,6 +30,15 @@ export const registerApplicationCommands = (
   cli: ReturnType<typeof Cli.create>,
   logger: Logger,
 ): void => {
+  registerJsonCommand({
+    cli,
+    logger,
+    name: CLI_COMMANDS.verifyReconstruction,
+    description:
+      "Verify finite reconstruction claims against a complete portable Evidence bundle",
+    inputSchema: reconstructionVerificationRequestSchema,
+    workflow: async (input) => verifyReconstructionRequest(input),
+  });
   registerJsonCommand({
     cli,
     logger,

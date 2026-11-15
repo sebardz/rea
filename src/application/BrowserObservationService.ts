@@ -6,11 +6,15 @@ import type {
 import type { AnalyzeWebBundleInput } from "../domain/webBundleAnalysis.js";
 import type { ObserveWebSessionInput } from "../domain/browserSession.js";
 import type { DiscoverWebMcpToolsInput } from "../domain/webMcpDiscovery.js";
-import type { BrowserCaptureComparisonInput } from "../domain/browserCaptureComparison.js";
 import type {
-  CaptureWebScreenshotInput,
-  CompareWebScreenshotsInput,
-} from "../domain/webScreenshot.js";
+  WebCaptureComparisonRequest,
+  WebScreenshotComparisonRequest,
+} from "../contracts/webComparisonInputContracts.js";
+import {
+  compareWebEvidence,
+  type WebComparisonContext,
+} from "./WebComparisonEvidence.js";
+import type { CaptureWebScreenshotInput } from "../domain/webScreenshot.js";
 import { AnalysisCapabilityUnavailableError } from "../domain/analysisErrorCore.js";
 import type { AnalysisError } from "../domain/analysisErrorBase.js";
 import { err, ok, type Result } from "../domain/result.js";
@@ -124,22 +128,10 @@ export const discoverWebMcpTools = async (
 
 /** Compare two already-normalized web captures without external access. */
 export const compareWebCaptureEvidence = async (
-  browser: BrowserObservationPort | undefined,
-  input: BrowserCaptureComparisonInput,
+  input: WebCaptureComparisonRequest,
+  context: WebComparisonContext = {},
 ): Promise<Result<Evidence, AnalysisError>> => {
-  const ready = requireBrowser(browser, "compare_web_captures");
-  if (!ready.ok) return ready;
-  const compared = await ready.value.compareCaptures(input);
-  return compared.ok
-    ? ok(
-        createBrowserEvidence(
-          "compare_web_captures",
-          input,
-          compared.value,
-          ready.value.identity(),
-        ),
-      )
-    : compared;
+  return compareWebEvidence("compare_web_captures", input, context);
 };
 
 /** Capture one visible-viewport screenshot for the requested target. */
@@ -165,22 +157,10 @@ export const captureWebScreenshot = async (
 
 /** Compare two self-verifying PNG artifacts without external access. */
 export const compareWebScreenshotEvidence = async (
-  browser: BrowserObservationPort | undefined,
-  input: CompareWebScreenshotsInput,
+  input: WebScreenshotComparisonRequest,
+  context: WebComparisonContext = {},
 ): Promise<Result<Evidence, AnalysisError>> => {
-  const ready = requireBrowser(browser, "compare_web_screenshots");
-  if (!ready.ok) return ready;
-  const compared = await ready.value.compareScreenshots(input);
-  return compared.ok
-    ? ok(
-        createBrowserEvidence(
-          "compare_web_screenshots",
-          input,
-          compared.value,
-          ready.value.identity(),
-        ),
-      )
-    : compared;
+  return compareWebEvidence("compare_web_screenshots", input, context);
 };
 
 const requireBrowser = (

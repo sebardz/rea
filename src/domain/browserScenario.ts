@@ -101,6 +101,18 @@ const validateSecretReferences = (
       );
 };
 
+/** Exact input references whose resolved values are intentionally not retained. */
+export const browserScenarioSecretReferences = (
+  scenario: ScenarioShape,
+): readonly string[] =>
+  [
+    ...new Set([
+      ...scenario.actions.flatMap(actionSecretReferences),
+      ...destinationSecretReferences(scenario.start_url),
+      ...validateStorage(scenario),
+    ]),
+  ].sort();
+
 const validateBrowserScenario = (
   scenario: ScenarioShape,
   context: z.RefinementCtx,
@@ -124,10 +136,11 @@ const validateBrowserScenario = (
     context,
   );
 
-  const references = scenario.actions.flatMap(actionSecretReferences);
-  references.push(...destinationSecretReferences(scenario.start_url));
-  references.push(...validateStorage(scenario));
-  validateSecretReferences(scenario, references, context);
+  validateSecretReferences(
+    scenario,
+    browserScenarioSecretReferences(scenario),
+    context,
+  );
 };
 
 /** Strict provider-neutral contract for one controlled browser scenario. */
