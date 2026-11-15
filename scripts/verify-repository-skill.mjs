@@ -3,7 +3,7 @@ import { dirname, join, relative } from "node:path";
 
 import { exec, pathExists } from "./lib/verify-package-core.mjs";
 
-/** Exercise Skills' default root discovery without ignored build outputs. */
+/** Exercise root discovery with one global installation in a disposable home. */
 export async function verifyRepositorySkill({ root, workspace }) {
   const snapshot = join(workspace, "repository");
   const consumer = join(workspace, "skill-consumer");
@@ -49,6 +49,7 @@ export async function verifyRepositorySkill({ root, workspace }) {
       "reverse-engineer-anything",
       "--agent",
       "codex",
+      "--global",
       "--yes",
     ],
     {
@@ -70,7 +71,12 @@ export async function verifyRepositorySkill({ root, workspace }) {
     snapshot,
     ".agents/skills/reverse-engineer-anything",
   );
-  const installedSkills = join(consumer, ".agents/skills");
+  if (
+    (await pathExists(join(consumer, ".agents/skills"))) ||
+    (await pathExists(join(consumer, ".codex/skills")))
+  )
+    throw new Error("Global skill installation created a project-local copy");
+  const installedSkills = join(home, ".agents/skills");
   const installedRoot = join(installedSkills, "reverse-engineer-anything");
   const files = await filePaths(authoredRoot);
   if (
